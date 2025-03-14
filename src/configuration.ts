@@ -5,11 +5,11 @@ import * as info from '@midwayjs/info';
 import * as typeorm from '@midwayjs/typeorm';
 import * as jwt from '@midwayjs/jwt';
 import { join } from 'path';
-// import { DefaultErrorFilter } from './filter/default.filter';
-// import { NotFoundFilter } from './filter/notfound.filter';
+import { DefaultErrorFilter } from './filter/default.filter';
+import { NotFoundFilter } from './filter/notfound.filter';
 import { ReportMiddleware } from './middleware/report.middleware';
-import { JwtMiddleware } from './middleware/jwt.middleware';
 import { CorsMiddleware } from './middleware/cors.middleware';
+import { UserController } from './controller/user.controller';
 
 @Configuration({
   imports: [
@@ -30,8 +30,10 @@ export class MainConfiguration {
 
   async onReady() {
     // add middleware
-    this.app.useMiddleware([CorsMiddleware, ReportMiddleware, JwtMiddleware]);
+    this.app.useMiddleware([CorsMiddleware, ReportMiddleware]);
     // add filter
-    // this.app.useFilter([NotFoundFilter, DefaultErrorFilter]);
+    this.app.useFilter([NotFoundFilter, DefaultErrorFilter]);
+    // add controller
+    this.app.getApplicationContext().registerObject('userController', UserController);
   }
 }
