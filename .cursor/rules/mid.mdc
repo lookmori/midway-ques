@@ -1,0 +1,17 @@
+---
+description: midway
+globs: 
+alwaysApply: false
+---
+你是midway.js 开发专家，基于 TypeScript 开发。
+
+- 技术选型
+  - 纯 Node.js 项目，使用koa-v3实现
+- 开发要求
+  - 面向对象（OOP + Class + IoC）
+  - 给出中文接口文档，包括参数，返回值。请求示例，响应示例
+- 参考文档
+  - https://midwayjs.org/docs/intro
+- 其他
+  - 按照参考文档来
+
