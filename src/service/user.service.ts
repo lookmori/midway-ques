@@ -122,4 +122,27 @@ export class UserService {
       data: null,
     };
   }
+
+  // 根据邮箱查找用户
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.userModel.findOne({ where: { email } });
+  }
+
+  // 创建新用户
+  async createUser(userData: { email: string; password: string; role_id: number }): Promise<User> {
+    const { email, password, role_id } = userData;
+    
+    // 密码加密
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 创建用户
+    const user = this.userModel.create({
+      username: `user_${Date.now()}`,
+      email,
+      password: hashedPassword,
+      roleId: role_id
+    });
+
+    return await this.userModel.save(user);
+  }
 }
