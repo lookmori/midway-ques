@@ -1,32 +1,114 @@
 import { MidwayConfig } from '@midwayjs/core';
-import { User } from '../entity/user.entity';
-import { Problem } from '../entity/problem.entity';
-import { UserProblem } from '../entity/user-problem.entity';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// 默认私钥（仅作为备用，生产环境应该使用环境变量或私钥文件）
+const DEFAULT_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQChG07fKDPSpTxD
+Sw/oZorkgicvGYauJj7idWYkaxZ/GR7O3mcUMkh699Rm5wNjlHC7dEoPyezPImc4
+ovmtdIXaW/+nJA3YUQBfwl8uKx8AfULwNho2PWbXoBeMyaLwXa6tKeQpA+vGnXhC
+kbegJNHmyNzD7R/tBx3G3yKY4SA8neC+5HI4YEuyBGhEfjVaWAjP47NwEmuFEIdF
+sV1a/p/doY7WR2WTrTHgrAsZ9QTI+10vDxC2YY/JeBDhLcQGIlr3Z99fUIjgbLnG
+BPSjBCVmG60AKJYTN3olvu0SkUsv4cEzoestvx7bc0JShqVfpx3e2LmKYOqKN7m8
+Mr3qIVpzAgMBAAECggEAK3J74L6syx/4koVJsvkEd/+JpbASnCCAUP4sH6IpnPkf
+T9a2ocG1vkPbqiyew1oi1MrVtlBUZr/2alW5U8fa2Tp6RY75lN6zZR+8H21NnQoq
+5TER/JKui3QHJday9HOvSc/EUjNWgGezKPC3Pp7vZHfC4auvMnL62skOQYBk+zOC
+xkFVth+PjdlRGBnaKwtIgHbQlSN4eZlx2IV3QECfOHT3kXii2BY3ErbOnYl61z5U
++I1FQJnf0gQX8ftCV259969uxtA+zxI49p51V7YeLU5TYRd7+Lj/78REfJz4CGo9
+165Zj/JGJojBYm/TCOR3KzJr9KeB/BHNiVpgm6AL0QKBgQDYr3yGmStCbXLCYJWI
+cv+knraIMcZtTxoO9F6M/27T4dHdY6bqr/p6Eb8M4zeAufNY/gLgKO5ARYIWxt6i
+17+vE40EzMUXTIW4OKmeflRgx8uoOfZNTTP3n9EaR+uxh9u4cFtfg6l3bE6jKOIe
+JBuALYXTL55DQvMfXU0uFQ5a7wKBgQC+VlIbbcR3iGbnqJhtVR3/CR8/o2X0djA+
+D7CA1295lHJiH75I4NgDbuUYG3M0YhkEpG2WLZNJUVL35mhxpbngjabKJLVAZenY
+M3lZWz5EyTzNXV+p2JGfbFioZaO1NwLYCbJZvw+C3Qnp0+fUxcOkL8eoWFWw/Tnc
+diGWHltIvQKBgQC2szBR5O/esJ3kWr96L0xxpwjMyPs/y0Rze4QFapItwOfMvWtN
+0ldleXUXDrYLqb4POQ1/p8NLGdBYGBI8R6FtoxRyCZ3cyT6uV8hcxLOsbom/LDAK
+eZ/pmC0c9as7IwwV9VZ1sHPBJ+ceFyigtV0itD90E2Bj4h1QQsECq+pQrQKBgQCL
+5tDlHlKZdaYFwrN/MWAh9GeGlCi9fh3JkCixGyjx2X4Vx7VKxhGgvGMhzBNqvmwb
+MGzoRMmMy3zLgAzm8+RjPFsLG94p3n76jiM03c8wKiZJ4McPBYNMBgxIgqTI7w1l
+FAOG2duh2ayOtVYi29YImaIMiBk8RXTBKgdX2ypHlQKBgBRJ5JnZmNzPhqdr9nOh
+XHBOCDbPd5v9LQzSNPc5zf734l0F/vpLsNfK6ofQdLbNqAOuSHJAWLTFg5onDZst
+iSyIlaiO9kTYXl37AH5nS8Xf0i+Hr45u9ZoD6JO7DcmUMdAoPvFaSbIFaKsVxy7I
+jpYk4vQ6agF0r/3G7dy3Y+sI
+-----END PRIVATE KEY-----`;
+
+// 尝试读取私钥文件
+const getPrivateKey = () => {
+  // 如果环境变量中有私钥，优先使用
+  if (process.env.COZE_PRIVATE_KEY && process.env.COZE_PRIVATE_KEY.trim() !== '') {
+    console.log('使用环境变量中的私钥');
+    return process.env.COZE_PRIVATE_KEY;
+  }
+
+  // 尝试从文件读取
+  const privateKeyPath = process.env.COZE_PRIVATE_KEY_PATH || './private_key.pem';
+  try {
+    const privateKey = fs.readFileSync(path.resolve(privateKeyPath), 'utf-8');
+    if (privateKey && privateKey.trim() !== '') {
+      console.log(`成功从文件 ${privateKeyPath} 读取私钥`);
+      return privateKey;
+    }
+    console.warn(`私钥文件 ${privateKeyPath} 内容为空，将使用默认私钥`);
+  } catch (error) {
+    console.warn(`无法读取私钥文件: ${privateKeyPath}，将使用默认私钥`);
+  }
+
+  // 使用默认私钥
+  console.log('使用默认私钥');
+  return DEFAULT_PRIVATE_KEY;
+};
 
 export default {
   // use for cookie sign key, should change to your own and keep security
-  keys: '1683796159833_7382',
+  keys: process.env.COOKIE_KEYS || '1686989223988_6323',
   koa: {
-    port: 7001,
+    port: process.env.PORT ? parseInt(process.env.PORT) : 7001,
   },
   typeorm: {
     dataSource: {
       default: {
         type: 'mysql',
-        host: 'localhost',
-        port: 3306,
-        username: 'root',
-        password: '3364487975lfp.',
-        database: 'py_ques',
-        synchronize: true, // 自动同步数据库表结构（开发环境使用）
-        logging: true, // 打印数据库查询日志
-        entities: [User, Problem, UserProblem], // 直接使用实体类
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
+        username: process.env.DB_USERNAME || 'root',
+        password: process.env.DB_PASSWORD || '3364487975lfp.',
+        database: process.env.DB_DATABASE || 'py_ques',
+        synchronize: process.env.DB_SYNCHRONIZE === 'true',
+        logging: process.env.DB_LOGGING === 'true',
+        entities: ['**/entity/*.entity{.ts,.js}'],
       },
     },
   },
   // JWT配置
   jwt: {
-    secret: 'your-secret-key', // 密钥
-    expiresIn: '2h', // token过期时间
+    secret: process.env.JWT_SECRET || 'your-jwt-secret',
+    expiresIn: process.env.JWT_EXPIRES_IN || '1h',
   },
+  // Coze 配置
+  coze: {
+    clientType: 'jwt',
+    clientId: process.env.COZE_CLIENT_ID || '1119333527611',
+    wwwBase: process.env.COZE_WWW_BASE || 'https://www.coze.cn',
+    apiBase: process.env.COZE_API_BASE || 'https://api.coze.cn',
+    publicKeyId: process.env.COZE_PUBLIC_KEY_ID || '6e6iZCcnD-T8Bf-zFIfJAoYAnBSDZ8nR-njNGTHrPa4',
+    privateKey: getPrivateKey(),
+  },
+  // 邮件服务配置
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.163.com',
+    port: process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 465,
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+      user: process.env.EMAIL_USER || 'v18338258072@163.com',
+      pass: process.env.EMAIL_PASS || 'DUu6nfHLUSLUBaUv',
+    },
+  },
+  // 验证码配置
+  verification: {
+    expireTime: process.env.VERIFICATION_CODE_EXPIRE_TIME ? parseInt(process.env.VERIFICATION_CODE_EXPIRE_TIME) : 300,
+  },
+  // Coze工作流配置
+  workflow: {
+    problemJudgeId: process.env.COZE_WORKFLOW_ID || '7476350823728218175',
+  }
 } as MidwayConfig;

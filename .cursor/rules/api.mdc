@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# 每次生成新的或者修改api都要即使更新README.md文件，并给出请求参数，地址，返回数据，状态码含义
+
+

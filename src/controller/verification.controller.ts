@@ -32,6 +32,7 @@ export class VerificationController {
         }
       };
     } catch (error) {
+      console.error('发送验证码失败:', error);
       return {
         code: 500,
         message: '验证码发送失败',

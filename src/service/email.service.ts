@@ -1,21 +1,48 @@
 import { Provide } from '@midwayjs/decorator';
+import { Config } from '@midwayjs/decorator';
 import * as nodemailer from 'nodemailer';
 import { randomInt } from 'crypto';
+import { InjectEntityModel } from '@midwayjs/typeorm';
+import { Repository } from 'typeorm';
+import { VerificationCode } from '../entity/verification-code.entity';
 
 @Provide()
 export class EmailService {
   private transporter: nodemailer.Transporter;
-  private verificationCodes: Map<string, { code: string; expireTime: number }> = new Map();
+
+  @InjectEntityModel(VerificationCode)
+  verificationCodeModel: Repository<VerificationCode>;
+
+  @Config('email')
+  emailConfig: {
+    host: string;
+    port: number;
+    secure: boolean;
+    auth: {
+      user: string;
+      pass: string;
+    }
+  };
+
+  @Config('verification')
+  verificationConfig: {
+    expireTime: number;
+  };
 
   constructor() {
     // 创建邮件传输对象
+    this.transporter = null; // 在afterPropertySet中初始化
+  }
+
+  // 在所有属性注入后初始化
+  async onReady() {
     this.transporter = nodemailer.createTransport({
-      host: 'smtp.163.com',
-      port: 465,
-      secure: true,
+      host: this.emailConfig.host,
+      port: this.emailConfig.port,
+      secure: this.emailConfig.secure,
       auth: {
-        user: 'v18338258072@163.com', // 发件人邮箱
-        pass: 'DUu6nfHLUSLUBaUv' // 邮箱授权码
+        user: this.emailConfig.auth.user,
+        pass: this.emailConfig.auth.pass
       }
     });
   }
@@ -28,17 +55,25 @@ export class EmailService {
   // 发送验证码邮件
   async sendVerificationCode(email: string): Promise<{ code: string; expireTime: number }> {
     const code = this.generateVerificationCode();
-    const expireTime = 300; // 5分钟过期
+    const expireTime = this.verificationConfig.expireTime; // 从配置获取过期时间
+    const expireAt = new Date(Date.now() + expireTime * 1000);
 
-    // 存储验证码和过期时间
-    this.verificationCodes.set(email, {
+    console.log(`生成验证码: ${code}, 邮箱: ${email}, 过期时间: ${expireAt}`);
+
+    // 创建新验证码
+    const verificationCode = this.verificationCodeModel.create({
+      email,
       code,
-      expireTime: Date.now() + expireTime * 1000
+      expireAt
     });
+
+    // 保存到数据库
+    await this.verificationCodeModel.save(verificationCode);
+    console.log(`验证码已保存到数据库, ID: ${verificationCode.id}`);
 
     // 邮件内容
     const mailOptions = {
-      from: 'v18338258072@163.com',
+      from: this.emailConfig.auth.user,
       to: email,
       subject: '验证码',
       text: `您的验证码是：${code}，${expireTime}秒内有效。`
@@ -47,6 +82,7 @@ export class EmailService {
     try {
       // 发送邮件
       await this.transporter.sendMail(mailOptions);
+      console.log(`验证码邮件已发送到 ${email}`);
       return { code, expireTime };
     } catch (error) {
       console.error('发送邮件失败:', error);
@@ -55,23 +91,38 @@ export class EmailService {
   }
 
   // 验证验证码
-  verifyCode(email: string, code: string): boolean {
-    const verification = this.verificationCodes.get(email);
-    if (!verification) {
+  async verifyCode(email: string, code: string): Promise<boolean> {
+    console.log(`验证验证码: ${code}, 邮箱: ${email}`);
+    
+    // 从数据库查找该邮箱的最新验证码
+    const verificationCodes = await this.verificationCodeModel.find({
+      where: { email },
+      order: { createdAt: 'DESC' },
+      take: 1
+    });
+    
+    if (verificationCodes.length === 0) {
+      console.log(`未找到该邮箱的验证码记录`);
       return false;
     }
 
-    if (Date.now() > verification.expireTime) {
-      this.verificationCodes.delete(email);
+    const latestCode = verificationCodes[0];
+    console.log(`数据库中的最新验证码: ${latestCode.code}, 过期时间: ${latestCode.expireAt}, 创建时间: ${latestCode.createdAt}`);
+    
+    // 检查是否过期
+    const now = new Date();
+    if (now > latestCode.expireAt) {
+      console.log(`验证码已过期, 当前时间: ${now}, 过期时间: ${latestCode.expireAt}`);
       return false;
     }
 
-    if (verification.code !== code) {
+    // 检查验证码是否匹配
+    if (latestCode.code !== code) {
+      console.log(`验证码不匹配, 输入: ${code}, 实际: ${latestCode.code}`);
       return false;
     }
 
-    // 验证成功后删除验证码
-    this.verificationCodes.delete(email);
+    console.log(`验证码验证成功`);
     return true;
   }
 } 

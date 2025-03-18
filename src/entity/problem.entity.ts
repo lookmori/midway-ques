@@ -35,6 +35,14 @@ export class Problem {
   })
   exampleOutput: string;
 
+  @Column({
+    name: 'answer',
+    type: 'text',
+    nullable: true,
+    comment: '问题答案',
+  })
+  answer: string;
+
   @OneToMany(() => UserProblem, userProblem => userProblem.problem)
   userProblems: UserProblem[];
 } 
