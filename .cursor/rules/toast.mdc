@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+- 所有toast组件，如果接口返回的有message，应当展示接口返回的message，
+

@@ -205,9 +205,9 @@
   "message": "string",    // 消息
   "data": {
     "problem_id": "number",   // 问题ID
-    "status": "number",       // 提交状态（1: 错误, 2: 正确）
+    "status": "number",       // 提交状态（0: 未完成/评判系统错误, 1: 正确, 2: 错误）
     "is_correct": "boolean",  // 是否正确（来自 Coze API 的 code_status）
-    "error_message": "string" // 错误信息（来自 Coze API 的 code_error，仅当 is_correct 为 false 时存在）
+    "error_message": "string" // 错误信息（来自 Coze API 的 code_error，或系统错误信息）
   } | null
 }
 ```
@@ -226,7 +226,7 @@
   "message": "提交成功",
   "data": {
     "problem_id": 1,
-    "status": 2,
+    "status": 1,
     "is_correct": true
   }
 }
@@ -239,7 +239,7 @@
   "message": "提交成功",
   "data": {
     "problem_id": 1,
-    "status": 1,
+    "status": 2,
     "is_correct": false,
     "error_message": "输入输出格式不正确，请检查您的代码"
   }
@@ -247,13 +247,10 @@
 ```
 
 **注意事项**：
-1. `is_correct` 字段来自 Coze API 的 `code_status`，表示代码是否正确
-2. `error_message` 字段来自 Coze API 的 `code_error`，包含具体的错误信息
-3. `status` 字段与 `is_correct` 对应：
-   - `is_correct` 为 true 时，`status` 为 2（正确）
-   - `is_correct` 为 false 时，`status` 为 1（错误）
-4. 必须使用学生角色（role_id = 0）才能提交答案
-5. 提交的答案会被保存到数据库，可以查看历史提交记录
+1. 如果之前已经提交过且状态为正确（status=1），则直接返回成功，不会再次调用评判系统
+2. 如果评判系统出错，状态会被设置为0（未完成），error_message会包含"评判系统错误"
+3. 必须使用学生角色（role_id = 0）才能提交答案
+4. 提交的答案会被保存到数据库，可以查看历史提交记录
 
 #### 2.3 导入问题
 - 请求路径：`POST /api/problems/import`
@@ -592,6 +589,6 @@ POST /api/get-user-info
 - 2: 管理员
 
 ## 问题状态说明
-- 0: 未完成
-- 1: 错误
-- 2: 正确
+- 0: 未完成/评判系统错误
+- 1: 正确
+- 2: 错误

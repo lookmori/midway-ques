@@ -87,9 +87,27 @@ export class ProblemService {
       return { code: 404, message: '问题不存在', data: null };
     }
 
+    // 检查之前的提交记录
+    let userProblem = await this.userProblemModel.findOne({
+      where: { userId: user_id, problemId: problem_id },
+    });
+
+    // 如果之前提交过且状态为正确，直接返回成功
+    if (userProblem && userProblem.status === 1) {
+      return {
+        code: 200,
+        message: '该题目已经通过',
+        data: {
+          problem_id,
+          status: userProblem.status,
+          is_correct: true
+        }
+      };
+    }
+
     // 调用Coze API判断答案是否正确
     console.log(`调用Coze API判断答案是否正确，问题ID: ${problem_id}`);
-    const workflowId = this.workflowConfig.problemJudgeId; // 使用配置的工作流ID
+    const workflowId = this.workflowConfig.problemJudgeId;
     
     // 使用传入的问题描述（如果有），否则使用数据库中的问题详情
     const questionDesc = problem_desc || problem.detail;
@@ -100,41 +118,53 @@ export class ProblemService {
       ques_ans: student_answer
     };
 
-    const cozeResult = await this.cozeService.invokeWorkflow(workflowId, cozeParams);
-    console.log(`Coze API返回结果: ${JSON.stringify(cozeResult)}`);
-
-    // 判断答案是否正确
     let isCorrect = false;
     let errorMessage = '';
-    
-    if (cozeResult.code === 200 && cozeResult.data) {
-      // 从Coze API返回结果中获取code_status和code_error
-      try {
-        // code_status表示问题是否正确
-        isCorrect = cozeResult.data.code_status === true;
-        // code_error包含错误信息，当答案错误时返回给客户端
-        errorMessage = cozeResult.data.code_error || '';
-        console.log(`解析Coze结果: isCorrect=${isCorrect}, errorMessage=${errorMessage}`);
-      } catch (error) {
-        console.error('解析Coze API返回结果失败:', error);
+
+    try {
+      const cozeResult = await this.cozeService.invokeWorkflow(workflowId, cozeParams);
+      console.log(`Coze API返回结果: ${JSON.stringify(cozeResult)}`);
+
+      if (cozeResult.code === 200 && cozeResult.data) {
+        try {
+          // 解析data字段中的JSON字符串
+          const resultData = JSON.parse(cozeResult.data.data);
+          // code_status表示问题是否正确
+          isCorrect = resultData.code_status === true;
+          // code_error包含错误信息，当答案错误时返回给客户端
+          errorMessage = resultData.code_error || '';
+          console.log(`解析Coze结果: isCorrect=${isCorrect}, errorMessage=${errorMessage}`);
+        } catch (error) {
+          console.error('解析Coze API返回结果失败:', error);
+          isCorrect = false;
+          errorMessage = '评判系统错误';
+        }
+      } else {
+        isCorrect = false;
+        errorMessage = '评判系统错误';
       }
+    } catch (error) {
+      console.error('调用Coze API失败:', error);
+      isCorrect = false;
+      errorMessage = '评判系统错误';
     }
 
     // 保存或更新答案
-    let userProblem = await this.userProblemModel.findOne({
-      where: { userId: user_id, problemId: problem_id },
-    });
-
     if (!userProblem) {
       userProblem = this.userProblemModel.create({
         userId: user_id,
         problemId: problem_id,
         studentAnswer: student_answer,
-        status: isCorrect ? 2 : 1, // 1: 错误, 2: 正确
+        status: isCorrect ? 1 : 2, // 1: 正确, 2: 错误
       });
     } else {
       userProblem.studentAnswer = student_answer;
-      userProblem.status = isCorrect ? 2 : 1; // 1: 错误, 2: 正确
+      userProblem.status = isCorrect ? 1 : 2; // 1: 正确, 2: 错误
+    }
+
+    // 如果工作流调用失败，设置状态为0
+    if (errorMessage === '评判系统错误') {
+      userProblem.status = 0;
     }
 
     await this.userProblemModel.save(userProblem);
@@ -142,7 +172,7 @@ export class ProblemService {
     // 构建返回结果
     const result = {
       code: 200,
-      message: '提交成功',
+      message: isCorrect ? '提交成功' : (errorMessage === '评判系统错误' ? '评判系统错误，请稍后重试' : '提交成功'),
       data: {
         problem_id,
         status: userProblem.status,
@@ -150,8 +180,8 @@ export class ProblemService {
       },
     };
     
-    // 如果答案错误，添加错误信息
-    if (!isCorrect && errorMessage) {
+    // 如果答案错误或系统错误，添加错误信息
+    if (errorMessage) {
       result.data['error_message'] = errorMessage;
     }
 
