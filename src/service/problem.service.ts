@@ -50,6 +50,7 @@ export class ProblemService {
             answer: problem.answer,
             status: userProblem?.status || 0,
             submit_count: userProblem ? 1 : 0, // 这里需要根据实际情况统计
+            ques_tag: problem.quesTag || undefined
           };
         }),
       };
@@ -66,6 +67,7 @@ export class ProblemService {
         example_input: problem.exampleInput,
         example_output: problem.exampleOutput,
         answer: problem.answer,
+        ques_tag: problem.quesTag || undefined
       })),
     };
   }
@@ -213,16 +215,18 @@ export class ProblemService {
             detail: problem.ques_desc,
             exampleInput: problem.ques_in,
             exampleOutput: problem.ques_out,
-            answer: problem.ques_ans, // 添加问题答案
+            answer: problem.ques_ans,
+            quesTag: problem.ques_tag || null, // 添加知识点标签，如果没有则为null
           });
 
           // 保存到数据库
           const savedProblem = await this.problemModel.save(newProblem);
-          console.log(`问题导入成功: ID=${savedProblem.problemId}, 标题=${savedProblem.title}`);
+          console.log(`问题导入成功: ID=${savedProblem.problemId}, 标题=${savedProblem.title}, 知识点=${savedProblem.quesTag || '无'}`);
           
           importedProblems.push({
             problem_id: savedProblem.problemId,
-            title: savedProblem.title
+            title: savedProblem.title,
+            ques_tag: savedProblem.quesTag
           });
         } catch (error) {
           console.error(`导入问题 "${problem.ques_name}" 失败:`, error);

@@ -11,3 +11,8 @@ run/
 *.un~
 .tsbuildinfo
 .tsbuildinfo.*
+.env
+private_key.pem
+public_key.pem
+*.pem
+

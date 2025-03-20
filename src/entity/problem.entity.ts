@@ -43,6 +43,15 @@ export class Problem {
   })
   answer: string;
 
+  @Column({
+    name: 'ques_tag',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+    comment: '问题知识点标签',
+  })
+  quesTag: string;
+
   @OneToMany(() => UserProblem, userProblem => userProblem.problem)
   userProblems: UserProblem[];
 } 

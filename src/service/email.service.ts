@@ -1,5 +1,4 @@
-import { Provide } from '@midwayjs/decorator';
-import { Config } from '@midwayjs/decorator';
+import { Provide, Config, Init } from '@midwayjs/decorator';
 import * as nodemailer from 'nodemailer';
 import { randomInt } from 'crypto';
 import { InjectEntityModel } from '@midwayjs/typeorm';
@@ -29,13 +28,9 @@ export class EmailService {
     expireTime: number;
   };
 
-  constructor() {
-    // 创建邮件传输对象
-    this.transporter = null; // 在afterPropertySet中初始化
-  }
-
-  // 在所有属性注入后初始化
-  async onReady() {
+  @Init()
+  async init() {
+    console.log('Initializing email service with config:', this.emailConfig);
     this.transporter = nodemailer.createTransport({
       host: this.emailConfig.host,
       port: this.emailConfig.port,
@@ -45,6 +40,15 @@ export class EmailService {
         pass: this.emailConfig.auth.pass
       }
     });
+    
+    // 验证邮件服务器连接
+    try {
+      await this.transporter.verify();
+      console.log('Email service initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize email service:', error);
+      throw error;
+    }
   }
 
   // 生成6位随机验证码

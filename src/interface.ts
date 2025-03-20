@@ -59,6 +59,7 @@ export interface ProblemForStudent {
   answer?: string;  // 可选的问题答案
   status: number;
   submit_count: number;
+  ques_tag?: string; // 问题知识点标签
 }
 
 // 教师视角的问题
@@ -69,6 +70,7 @@ export interface ProblemForTeacher {
   example_input: string;
   example_output: string;
   answer?: string;  // 可选的问题答案
+  ques_tag?: string; // 问题知识点标签
 }
 
 // 提交答案请求
@@ -102,6 +104,7 @@ export interface ImportProblemItemDTO {
   ques_in: string;      // 示例输入
   ques_out: string;     // 示例输出
   ques_ans: string;     // 问题的正确答案
+  ques_tag?: string;    // 问题知识点标签（可选）
 }
 
 export interface ImportProblemsDTO {
