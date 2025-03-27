@@ -1,22 +1,23 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
 import { Problem } from './problem.entity';
 
 @Entity('user_problem')
 export class UserProblem {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column({
     name: 'problem_id',
-    primary: true,
     comment: '问题ID',
   })
-  problemId: number;
+  problem_id: number;
 
   @Column({
     name: 'user_id',
-    primary: true,
     comment: '用户ID',
   })
-  userId: number;
+  user_id: number;
 
   @Column({
     type: 'int',
@@ -31,13 +32,21 @@ export class UserProblem {
     nullable: true,
     comment: '学生提交的答案',
   })
-  studentAnswer: string;
+  student_answer: string;
 
-  @ManyToOne(() => Problem, problem => problem.userProblems)
+  @Column({
+    name: 'submission_time',
+    type: 'date',
+    nullable: true,
+    comment: '提交时间，精确到日',
+  })
+  submission_time: Date;
+
+  @ManyToOne(() => Problem, problem => problem.user_problems)
   @JoinColumn({ name: 'problem_id' })
   problem: Problem;
 
-  @ManyToOne(() => User, user => user.userProblems)
+  @ManyToOne(() => User, user => user.user_problems)
   @JoinColumn({ name: 'user_id' })
   user: User;
 } 

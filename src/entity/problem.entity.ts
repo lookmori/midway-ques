@@ -4,7 +4,7 @@ import { UserProblem } from './user-problem.entity';
 @Entity('problem')
 export class Problem {
   @PrimaryGeneratedColumn({ name: 'problem_id' })
-  problemId: number;
+  problem_id: number;
 
   @Column({
     type: 'varchar',
@@ -25,7 +25,7 @@ export class Problem {
     nullable: true,
     comment: '示例输入',
   })
-  exampleInput: string;
+  example_input: string;
 
   @Column({
     name: 'example_output',
@@ -33,7 +33,7 @@ export class Problem {
     nullable: true,
     comment: '示例输出',
   })
-  exampleOutput: string;
+  example_output: string;
 
   @Column({
     name: 'answer',
@@ -50,8 +50,8 @@ export class Problem {
     nullable: true,
     comment: '问题知识点标签',
   })
-  quesTag: string;
+  ques_tag: string;
 
   @OneToMany(() => UserProblem, userProblem => userProblem.problem)
-  userProblems: UserProblem[];
+  user_problems: UserProblem[];
 } 

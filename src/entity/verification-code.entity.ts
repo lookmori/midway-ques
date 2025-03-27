@@ -20,14 +20,16 @@ export class VerificationCode {
   code: string;
 
   @Column({
+    name: 'expire_at',
     type: 'datetime',
     comment: '过期时间',
   })
-  expireAt: Date;
+  expire_at: Date;
 
   @CreateDateColumn({
+    name: 'created_at',
     type: 'datetime',
     comment: '创建时间',
   })
-  createdAt: Date;
+  created_at: Date;
 } 

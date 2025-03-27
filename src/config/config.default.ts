@@ -60,29 +60,52 @@ const getPrivateKey = () => {
 
 export default {
   // use for cookie sign key, should change to your own and keep security
-  keys: process.env.COOKIE_KEYS || '1686989223988_6323',
+  keys: '1687849416943_6346',
   koa: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 7001,
+    port: process.env.PORT || 7001,
   },
+  jwt: {
+    secret: process.env.JWT_SECRET || 'your-jwt-secret', // 建议在生产环境中使用环境变量
+    expiresIn: '2d', // 过期时间
+  },
+  // MySQL 配置
   typeorm: {
     dataSource: {
       default: {
         type: 'mysql',
-        host: process.env.DB_HOST || 'localhost',
-        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306,
-        username: process.env.DB_USERNAME || 'root',
-        password: process.env.DB_PASSWORD || '3364487975lfp.',
-        database: process.env.DB_DATABASE || 'py_ques',
-        synchronize: process.env.DB_SYNCHRONIZE === 'true',
-        logging: process.env.DB_LOGGING === 'true',
+        host: process.env.MYSQL_HOST || 'localhost',
+        port: parseInt(process.env.MYSQL_PORT || '3306'),
+        username: process.env.MYSQL_USER || 'root',
+        password: process.env.MYSQL_PASSWORD || 'your-password',
+        database: process.env.MYSQL_DATABASE || 'py_ques',
+        synchronize: false, // 生产环境设置为 false
+        logging: process.env.NODE_ENV === 'development',
         entities: ['**/entity/*.entity{.ts,.js}'],
-      },
-    },
+        // 连接池配置
+        poolSize: 10,
+        connectorPackage: 'mysql2',
+        extra: {
+          connectionLimit: 10,
+          waitForConnections: true,
+          queueLimit: 0,
+        },
+      }
+    }
   },
-  // JWT配置
-  jwt: {
-    secret: process.env.JWT_SECRET || 'your-jwt-secret',
-    expiresIn: process.env.JWT_EXPIRES_IN || '1h',
+  // 邮件服务配置
+  emailConfig: {
+    host: process.env.EMAIL_HOST || 'smtp.qq.com',
+    port: parseInt(process.env.EMAIL_PORT || '465'),
+    auth: {
+      user: process.env.EMAIL_USER || 'your-email@qq.com',
+      pass: process.env.EMAIL_PASS || 'your-email-password'
+    },
+    secure: true
+  },
+  // CORS 配置
+  cors: {
+    origin: '*',
+    allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
   },
   // Coze 配置
   coze: {
@@ -92,16 +115,6 @@ export default {
     apiBase: process.env.COZE_API_BASE || 'https://api.coze.cn',
     publicKeyId: process.env.COZE_PUBLIC_KEY_ID || '6e6iZCcnD-T8Bf-zFIfJAoYAnBSDZ8nR-njNGTHrPa4',
     privateKey: getPrivateKey(),
-  },
-  // 邮件服务配置
-  email: {
-    host: process.env.EMAIL_HOST || 'smtp.163.com',
-    port: process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 465,
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-      user: process.env.EMAIL_USER || 'v18338258072@163.com',
-      pass: process.env.EMAIL_PASS || 'DUu6nfHLUSLUBaUv',
-    },
   },
   // 验证码配置
   verification: {

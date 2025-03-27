@@ -24,7 +24,7 @@ export class UserService {
     try {
       // 查找用户
       const user = await this.userModel.findOne({ where: { email } });
-      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.userId}, roleId=${user.roleId}, 类型: ${typeof user.roleId}` : '未找到用户');
+      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.user_id}, roleId=${user.role_id}, 类型: ${typeof user.role_id}` : '未找到用户');
       
       if (!user) {
         return { code: 401, message: '用户不存在', data: null };
@@ -39,7 +39,7 @@ export class UserService {
       }
 
       // 确保类型一致（将字符串转换为数字）
-      const userRoleId = user.roleId;
+      const userRoleId = user.role_id;
       const requestRoleId = typeof role_id === 'string' ? parseInt(role_id) : role_id;
       
       // 验证角色
@@ -50,9 +50,9 @@ export class UserService {
 
       // 生成 token
       const token = await this.jwtService.sign({ 
-        userId: user.userId,
+        user_id: user.user_id,
         email: user.email,
-        roleId: user.roleId 
+        role_id: user.role_id 
       });
       console.log('登录成功，已生成token');
 
@@ -60,10 +60,10 @@ export class UserService {
         code: 200,
         message: '登录成功',
         data: {
-          user_id: user.userId,
+          user_id: user.user_id,
           username: user.username,
           email: user.email,
-          role_id: user.roleId,
+          role_id: user.role_id,
           token,
         },
       };
@@ -105,20 +105,20 @@ export class UserService {
         username,
         email,
         password: hashedPassword,
-        roleId: role_id,
+        role_id,
       });
 
       const savedUser = await this.userModel.save(user);
-      console.log(`用户创建成功: userId=${savedUser.userId}, email=${savedUser.email}, roleId=${savedUser.roleId}`);
+      console.log(`用户创建成功: userId=${savedUser.user_id}, email=${savedUser.email}, roleId=${savedUser.role_id}`);
 
       return {
         code: 200,
         message: '注册成功',
         data: {
-          user_id: savedUser.userId,
+          user_id: savedUser.user_id,
           username: savedUser.username,
           email: savedUser.email,
-          role_id: savedUser.roleId,
+          role_id: savedUser.role_id,
         },
       };
     } catch (error) {
@@ -128,32 +128,32 @@ export class UserService {
   }
 
   // 更新用户角色
-  async updateRole(userId: number, roleId: number, operatorRoleId: number) {
-    console.log(`尝试更新用户角色: userId=${userId}, roleId=${roleId}, operatorRoleId=${operatorRoleId}`);
+  async updateRole(user_id: number, role_id: number, operator_role_id: number) {
+    console.log(`尝试更新用户角色: userId=${user_id}, roleId=${role_id}, operatorRoleId=${operator_role_id}`);
     
     // 检查操作者权限
-    if (roleId === 2 && operatorRoleId !== 2) {
+    if (role_id === 2 && operator_role_id !== 2) {
       return { code: 403, message: '权限不足', data: null };
     }
-    if (roleId === 1 && operatorRoleId < 1) {
+    if (role_id === 1 && operator_role_id < 1) {
       return { code: 403, message: '权限不足', data: null };
     }
 
     try {
-      const user = await this.userModel.findOne({ where: { userId } });
-      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.userId}, roleId=${user.roleId}` : '未找到用户');
+      const user = await this.userModel.findOne({ where: { user_id } });
+      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.user_id}, roleId=${user.role_id}` : '未找到用户');
       
       if (!user) {
         return { code: 404, message: '用户不存在', data: null };
       }
 
-      user.roleId = roleId;
+      user.role_id = role_id;
       await this.userModel.save(user);
-      console.log(`用户角色更新成功: userId=${user.userId}, 新角色=${roleId}`);
+      console.log(`用户角色更新成功: userId=${user.user_id}, 新角色=${role_id}`);
 
       return {
         code: 200,
-        message: roleId === 1 ? '教师添加成功' : '学生添加成功',
+        message: role_id === 1 ? '教师添加成功' : '学生添加成功',
         data: null,
       };
     } catch (error) {
@@ -167,7 +167,7 @@ export class UserService {
     console.log(`根据邮箱查找用户: email=${email}`);
     try {
       const user = await this.userModel.findOne({ where: { email } });
-      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.userId}, roleId=${user.roleId}` : '未找到用户');
+      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.user_id}, roleId=${user.role_id}` : '未找到用户');
       return user;
     } catch (error) {
       console.error('查找用户过程中发生错误:', error);
@@ -176,74 +176,71 @@ export class UserService {
   }
 
   // 创建新用户
-  async createUser(userData: { username?: string; email: string; password: string; role_id: number }): Promise<User> {
-    const { username, email, password, role_id } = userData;
-    console.log(`创建新用户: email=${email}, role_id=${role_id}, username=${username || '未提供'}`);
-    
-    // 密码加密
-    const hashedPassword = await bcrypt.hash(password, 10);
+  async createUser(username: string, email: string, password: string, role_id: number) {
+    try {
+      const user = this.userModel.create({
+        username,
+        email,
+        password,
+        role_id
+      });
 
-    // 创建用户
-    const user = this.userModel.create({
-      username: username || `user_${Date.now()}`,
-      email,
-      password: hashedPassword,
-      roleId: role_id
-    });
+      const savedUser = await this.userModel.save(user);
+      console.log(`用户创建成功: user_id=${savedUser.user_id}, email=${savedUser.email}, role_id=${savedUser.role_id}`);
 
-    const savedUser = await this.userModel.save(user);
-    console.log(`用户创建成功: userId=${savedUser.userId}, email=${savedUser.email}, roleId=${savedUser.roleId}`);
-    return savedUser;
+      return {
+        code: 200,
+        message: '创建成功',
+        data: {
+          user_id: savedUser.user_id,
+          username: savedUser.username,
+          email: savedUser.email,
+          role_id: savedUser.role_id
+        }
+      };
+    } catch (error) {
+      console.error('创建用户失败:', error);
+      return { code: 500, message: '服务器错误', data: null };
+    }
   }
 
   // 删除用户
-  async deleteUser(userId: number, operatorRoleId: number) {
-    console.log(`尝试删除用户: userId=${userId}, 操作者角色ID=${operatorRoleId}`);
-    
-    // 检查操作者权限（只有管理员可以删除用户）
-    if (operatorRoleId !== 2) {
-      console.log('权限不足，只有管理员可以删除用户');
-      return { code: 403, message: '权限不足，只有管理员可以删除用户', data: null };
-    }
-
+  async deleteUser(user_id: number, operator_id: number) {
     try {
-      // 查找用户
-      const user = await this.userModel.findOne({ where: { userId } });
-      console.log('查询结果:', user ? `找到用户: ${user.email}, userId=${user.userId}, roleId=${user.roleId}` : '未找到用户');
-      
+      const user = await this.userModel.findOne({ where: { user_id } });
+      console.log('查询结果:', user ? `找到用户: ${user.email}, user_id=${user.user_id}, role_id=${user.role_id}` : '未找到用户');
+
       if (!user) {
         return { code: 404, message: '用户不存在', data: null };
       }
 
-      // 不允许删除管理员账号
-      if (user.roleId === 2) {
-        console.log('不允许删除管理员账号');
-        return { code: 403, message: '不允许删除管理员账号', data: null };
+      // 检查是否为管理员
+      if (user.role_id === 2) {
+        return { code: 403, message: '不能删除管理员账号', data: null };
       }
 
-      // 删除用户
       await this.userModel.remove(user);
-      console.log(`用户删除成功: userId=${userId}`);
+      console.log(`用户删除成功: user_id=${user_id}`);
 
       return {
         code: 200,
-        message: '用户删除成功',
+        message: '删除成功',
         data: null
       };
     } catch (error) {
-      console.error('删除用户过程中发生错误:', error);
+      console.error('删除用户失败:', error);
       return { code: 500, message: '服务器错误', data: null };
     }
   }
 
   // 修改用户信息
-  async updateUser(operatorId: number, operatorRoleId: number, userId: number, updateData: { username?: string; password?: string }) {
-    console.log(`尝试修改用户信息: 操作者ID=${operatorId}, 操作者角色ID=${operatorRoleId}, 被修改用户ID=${userId}`);
+  async updateUser(operator_id: number, operator_role_id: number, user_id: number, updateData: { username?: string; password?: string }) {
+    console.log(`尝试修改用户信息: 操作者ID=${operator_id}, 操作者角色ID=${operator_role_id}, 被修改用户ID=${user_id}`);
     
     try {
       // 查找被修改的用户
-      const targetUser = await this.userModel.findOne({ where: { userId } });
-      console.log('查询结果:', targetUser ? `找到用户: ${targetUser.email}, userId=${targetUser.userId}, roleId=${targetUser.roleId}` : '未找到用户');
+      const targetUser = await this.userModel.findOne({ where: { user_id } });
+      console.log('查询结果:', targetUser ? `找到用户: ${targetUser.email}, userId=${targetUser.user_id}, roleId=${targetUser.role_id}` : '未找到用户');
       
       if (!targetUser) {
         return { code: 404, message: '用户不存在', data: null };
@@ -252,13 +249,13 @@ export class UserService {
       // 权限检查
       // 1. 教师只能修改学生信息
       // 2. 管理员可以修改所有人信息（除了其他管理员）
-      if (operatorRoleId === 1) { // 教师
-        if (targetUser.roleId !== 0) {
+      if (operator_role_id === 1) { // 教师
+        if (targetUser.role_id !== 0) {
           console.log('权限不足，教师只能修改学生信息');
           return { code: 403, message: '权限不足，教师只能修改学生信息', data: null };
         }
-      } else if (operatorRoleId === 2) { // 管理员
-        if (targetUser.roleId === 2 && targetUser.userId !== operatorId) {
+      } else if (operator_role_id === 2) { // 管理员
+        if (targetUser.role_id === 2 && targetUser.user_id !== operator_id) {
           console.log('不允许修改其他管理员信息');
           return { code: 403, message: '不允许修改其他管理员信息', data: null };
         }
@@ -298,16 +295,16 @@ export class UserService {
 
       // 保存更新
       await this.userModel.save(targetUser);
-      console.log(`用户信息更新成功: userId=${userId}`);
+      console.log(`用户信息更新成功: userId=${user_id}`);
 
       return {
         code: 200,
         message: '用户信息更新成功',
         data: {
-          user_id: targetUser.userId,
+          user_id: targetUser.user_id,
           username: targetUser.username,
           email: targetUser.email,
-          role_id: targetUser.roleId
+          role_id: targetUser.role_id
         }
       };
     } catch (error) {
@@ -322,13 +319,13 @@ export class UserService {
     
     try {
       // 验证查询者是否存在
-      const operator = await this.userModel.findOne({ where: { userId: user_id } });
+      const operator = await this.userModel.findOne({ where: { user_id } });
       if (!operator) {
         return { code: 401, message: '查询者不存在', data: null };
       }
       
       // 验证查询者角色是否匹配
-      if (operator.roleId !== role_id) {
+      if (operator.role_id !== role_id) {
         return { code: 403, message: '查询者角色不匹配', data: null };
       }
       
@@ -337,7 +334,7 @@ export class UserService {
       
       // 学生只能查看自己
       if (role_id === 0) {
-        const user = await this.userModel.findOne({ where: { userId: user_id } });
+        const user = await this.userModel.findOne({ where: { user_id } });
         if (user) {
           const { password, ...userInfo } = user;
           users = [userInfo];
@@ -356,14 +353,14 @@ export class UserService {
           
           if (find_id === 0) {
             // 查询所有学生
-            const allStudents = await this.userModel.find({ where: { roleId: 0 } });
+            const allStudents = await this.userModel.find({ where: { role_id: 0 } });
             users = allStudents.map(user => {
               const { password, ...userInfo } = user;
               return userInfo;
             });
           } else if (find_id === 1) {
             // 只能查看自己
-            const teacher = await this.userModel.findOne({ where: { userId: user_id } });
+            const teacher = await this.userModel.findOne({ where: { user_id } });
             if (teacher) {
               const { password, ...teacherInfo } = teacher;
               users = [teacherInfo];
@@ -371,14 +368,14 @@ export class UserService {
           }
         } else {
           // 未指定find_id，返回所有学生和自己
-          const allStudents = await this.userModel.find({ where: { roleId: 0 } });
+          const allStudents = await this.userModel.find({ where: { role_id: 0 } });
           users = allStudents.map(user => {
             const { password, ...userInfo } = user;
             return userInfo;
           });
           
           // 添加教师自己的信息
-          const teacher = await this.userModel.findOne({ where: { userId: user_id } });
+          const teacher = await this.userModel.findOne({ where: { user_id } });
           if (teacher) {
             const { password, ...teacherInfo } = teacher;
             users.push(teacherInfo);
@@ -396,7 +393,7 @@ export class UserService {
             return { code: 400, message: '角色ID不正确', data: null };
           }
           
-          const usersWithRole = await this.userModel.find({ where: { roleId: find_id } });
+          const usersWithRole = await this.userModel.find({ where: { role_id: find_id } });
           users = usersWithRole.map(user => {
             const { password, ...userInfo } = user;
             return userInfo;
@@ -416,6 +413,77 @@ export class UserService {
       return { code: 403, message: '未知角色', data: null };
     } catch (error) {
       console.error('获取用户信息错误:', error);
+      return { code: 500, message: '服务器错误', data: null };
+    }
+  }
+
+  async findUser(email: string) {
+    try {
+      const user = await this.userModel.findOne({ where: { email } });
+      console.log('查询结果:', user ? `找到用户: ${user.email}, user_id=${user.user_id}, role_id=${user.role_id}` : '未找到用户');
+
+      if (!user) {
+        return { code: 404, message: '用户不存在', data: null };
+      }
+
+      return {
+        code: 200,
+        message: '查询成功',
+        data: {
+          user_id: user.user_id,
+          email: user.email,
+          role_id: user.role_id
+        }
+      };
+    } catch (error) {
+      console.error('查询用户失败:', error);
+      return { code: 500, message: '服务器错误', data: null };
+    }
+  }
+
+  async findUsersByRole(role_id: number) {
+    try {
+      const users = await this.userModel.find({ where: { role_id } });
+      return {
+        code: 200,
+        message: '查询成功',
+        data: users.map(user => ({
+          user_id: user.user_id,
+          username: user.username,
+          email: user.email,
+          role_id: user.role_id
+        }))
+      };
+    } catch (error) {
+      console.error('查询用户失败:', error);
+      return { code: 500, message: '服务器错误', data: null };
+    }
+  }
+
+  async updateUserRole(user_id: number, role_id: number) {
+    try {
+      const user = await this.userModel.findOne({ where: { user_id } });
+      console.log('查询结果:', user ? `找到用户: ${user.email}, user_id=${user.user_id}, role_id=${user.role_id}` : '未找到用户');
+
+      if (!user) {
+        return { code: 404, message: '用户不存在', data: null };
+      }
+
+      user.role_id = role_id;
+      await this.userModel.save(user);
+      console.log(`用户角色更新成功: user_id=${user.user_id}, 新角色=${role_id}`);
+
+      return {
+        code: 200,
+        message: '更新成功',
+        data: {
+          user_id: user.user_id,
+          email: user.email,
+          role_id: user.role_id
+        }
+      };
+    } catch (error) {
+      console.error('更新用户角色失败:', error);
       return { code: 500, message: '服务器错误', data: null };
     }
   }

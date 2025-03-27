@@ -60,15 +60,15 @@ export class EmailService {
   async sendVerificationCode(email: string): Promise<{ code: string; expireTime: number }> {
     const code = this.generateVerificationCode();
     const expireTime = this.verificationConfig.expireTime; // 从配置获取过期时间
-    const expireAt = new Date(Date.now() + expireTime * 1000);
+    const expire_at = new Date(Date.now() + expireTime * 1000);
 
-    console.log(`生成验证码: ${code}, 邮箱: ${email}, 过期时间: ${expireAt}`);
+    console.log(`生成验证码: ${code}, 邮箱: ${email}, 过期时间: ${expire_at}`);
 
     // 创建新验证码
     const verificationCode = this.verificationCodeModel.create({
       email,
       code,
-      expireAt
+      expire_at: expire_at
     });
 
     // 保存到数据库
@@ -101,7 +101,7 @@ export class EmailService {
     // 从数据库查找该邮箱的最新验证码
     const verificationCodes = await this.verificationCodeModel.find({
       where: { email },
-      order: { createdAt: 'DESC' },
+      order: { created_at: 'DESC' },
       take: 1
     });
     
@@ -111,12 +111,12 @@ export class EmailService {
     }
 
     const latestCode = verificationCodes[0];
-    console.log(`数据库中的最新验证码: ${latestCode.code}, 过期时间: ${latestCode.expireAt}, 创建时间: ${latestCode.createdAt}`);
+    console.log(`数据库中的最新验证码: ${latestCode.code}, 过期时间: ${latestCode.expire_at}, 创建时间: ${latestCode.created_at}`);
     
     // 检查是否过期
     const now = new Date();
-    if (now > latestCode.expireAt) {
-      console.log(`验证码已过期, 当前时间: ${now}, 过期时间: ${latestCode.expireAt}`);
+    if (now > latestCode.expire_at) {
+      console.log(`验证码已过期, 当前时间: ${now}, 过期时间: ${latestCode.expire_at}`);
       return false;
     }
 

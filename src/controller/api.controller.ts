@@ -1,4 +1,4 @@
-import { Inject, Controller, Post, Body } from '@midwayjs/decorator';
+import { Inject, Controller, Post, Body, Get, Query } from '@midwayjs/decorator';
 import { Context } from '@midwayjs/koa';
 import { UserService } from '../service/user.service';
 import { ProblemService } from '../service/problem.service';
@@ -8,7 +8,6 @@ import {
   RegisterDTO, 
   ProblemQueryDTO, 
   SubmitAnswerDTO,
-  AddUserDTO,
   ImportProblemItemDTO,
   DeleteUserDTO,
   UpdateUserDTO,
@@ -180,10 +179,41 @@ export class APIController {
   }
 
   // 问题列表
-  @Post('/problems')
-  @Validate()
-  async getProblems(@Body() query: ProblemQueryDTO) {
-    return await this.problemService.getProblems(query);
+  @Get('/problems')
+  async getProblems(@Query() query: ProblemQueryDTO) {
+    try {
+      console.log('接收到获取问题列表请求:', query);
+      const result = await this.problemService.queryProblems(query);
+      
+      // 确保学生查询结果中包含status字段
+      if (query.role_id === 0 && result.data) {
+        console.log('检查学生查询结果是否包含status字段');
+        // 确保data是数组
+        if (Array.isArray(result.data)) {
+          // 检查返回数据中每个问题是否包含status字段
+          const hasStatus = (result.data as any[]).every(item => 'status' in item);
+          console.log('查询结果是否全部包含status字段:', hasStatus);
+          
+          if (!hasStatus) {
+            console.error('发现问题: 部分或全部问题缺少status字段');
+            // 确保每个问题都有status字段
+            result.data = (result.data as any[]).map(problem => ({
+              ...problem,
+              status: problem.status !== undefined ? problem.status : 0,
+              submit_count: problem.submit_count || 1
+            }));
+          }
+        } else {
+          console.log('查询结果不是数组，无需检查status字段');
+        }
+      }
+      
+      console.log(`返回${Array.isArray(result.data) ? result.data.length : '单个或无'}问题数据`);
+      return result;
+    } catch (error) {
+      console.error('获取问题列表失败:', error);
+      return { code: 500, message: '服务器错误', data: null };
+    }
   }
 
   // 提交答案
@@ -195,115 +225,137 @@ export class APIController {
 
   // 添加教师
   @Post('/teachers')
-  @Validate()
-  async addTeacher(@Body() addUserDTO: AddUserDTO) {
-    console.log('收到添加教师请求:', JSON.stringify(addUserDTO));
+  async addTeacher(@Body() body: { username: string; email: string; password: string; role_id: number }) {
+    const { username, email, password, role_id } = body;
+
     try {
-      const { username, email, password, role_id } = addUserDTO;
-      
-      // 验证操作者权限（只有管理员可以添加教师）
-      const operatorRoleId = role_id;
-      if (operatorRoleId !== 2) {
-        return { code: 403, message: '权限不足，只有管理员可以添加教师', data: null };
+      // 验证操作者角色权限
+      if (role_id !== 2) {
+        return {
+          code: 403,
+          message: '权限不足，只有管理员可以添加教师',
+          data: null
+        };
       }
-      
+
       // 验证邮箱格式
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        return { code: 400, message: '邮箱格式不正确', data: null };
+        return {
+          code: 400,
+          message: '邮箱格式不正确',
+          data: null
+        };
       }
-      
+
       // 验证密码长度
       if (password.length < 6) {
-        return { code: 400, message: '密码长度不能小于6位', data: null };
+        return {
+          code: 400,
+          message: '密码长度不能小于6位',
+          data: null
+        };
       }
-      
-      // 检查邮箱是否已存在
+
+      // 检查邮箱是否已被注册
       const existingUser = await this.userModel.findOne({ where: { email } });
       if (existingUser) {
-        return { code: 400, message: '该邮箱已被注册', data: null };
+        return {
+          code: 400,
+          message: '该邮箱已被注册',
+          data: null
+        };
       }
+
+      // 创建新教师用户
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await this.userService.createUser(username, email, hashedPassword, 1);
       
-      // 创建新用户
-      const newUser = await this.userService.createUser({
-        username,
-        email,
-        password,
-        role_id: 1  // 教师角色
-      });
-      
-      console.log(`教师添加成功: userId=${newUser.userId}, email=${newUser.email}`);
-      
-      return {
-        code: 200,
-        message: '教师添加成功',
-        data: {
-          user_id: newUser.userId,
-          username: newUser.username,
-          email: newUser.email,
-          role_id: newUser.roleId
-        }
-      };
+      if (newUser.code === 200) {
+        console.log(`教师添加成功: user_id=${newUser.data.user_id}, email=${newUser.data.email}`);
+        return {
+          code: 200,
+          message: '教师添加成功',
+          data: {
+            user_id: newUser.data.user_id,
+            username: newUser.data.username,
+            email: newUser.data.email,
+            role_id: 1  // 固定为教师角色
+          }
+        };
+      }
+      return newUser;
     } catch (error) {
       console.error('添加教师失败:', error);
-      return { code: 500, message: '添加教师失败', data: null };
+      return { code: 500, message: '服务器错误', data: null };
     }
   }
 
   // 添加学生
   @Post('/students')
-  @Validate()
-  async addStudent(@Body() addUserDTO: AddUserDTO) {
-    console.log('收到添加学生请求:', JSON.stringify(addUserDTO));
+  async addStudent(@Body() body: { username: string; email: string; password: string; role_id: number }) {
+    const { username, email, password, role_id } = body;
+
     try {
-      const { username, email, password, role_id } = addUserDTO;
-      
-      // 验证操作者权限（教师和管理员都可以添加学生）
-      const operatorRoleId = role_id;
-      if (operatorRoleId < 1) {
-        return { code: 403, message: '权限不足，只有教师和管理员可以添加学生', data: null };
+      // 验证操作者角色权限
+      if (role_id !== 1 && role_id !== 2) {
+        return {
+          code: 403,
+          message: '权限不足，只有教师和管理员可以添加学生',
+          data: null
+        };
       }
-      
+
       // 验证邮箱格式
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        return { code: 400, message: '邮箱格式不正确', data: null };
+        return {
+          code: 400,
+          message: '邮箱格式不正确',
+          data: null
+        };
       }
-      
+
       // 验证密码长度
       if (password.length < 6) {
-        return { code: 400, message: '密码长度不能小于6位', data: null };
+        return {
+          code: 400,
+          message: '密码长度不能小于6位',
+          data: null
+        };
       }
-      
-      // 检查邮箱是否已存在
+
+      // 检查邮箱是否已被注册
       const existingUser = await this.userModel.findOne({ where: { email } });
       if (existingUser) {
-        return { code: 400, message: '该邮箱已被注册', data: null };
+        return {
+          code: 400,
+          message: '该邮箱已被注册',
+          data: null
+        };
       }
+
+      // 创建新学生用户
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = await this.userService.createUser(username, email, hashedPassword, 0);
       
-      // 创建新用户
-      const newUser = await this.userService.createUser({
-        username,
-        email,
-        password,
-        role_id: 0  // 学生角色
-      });
-      
-      console.log(`学生添加成功: userId=${newUser.userId}, email=${newUser.email}`);
-      
-      return {
-        code: 200,
-        message: '学生添加成功',
-        data: {
-          user_id: newUser.userId,
-          username: newUser.username,
-          email: newUser.email,
-          role_id: newUser.roleId
-        }
-      };
+      if (newUser.code === 200) {
+        console.log(`学生添加成功: user_id=${newUser.data.user_id}, email=${newUser.data.email}`);
+        return {
+          code: 200,
+          message: '学生添加成功',
+          data: {
+            user_id: newUser.data.user_id,
+            username: newUser.data.username,
+            email: newUser.data.email,
+            role_id: 0  // 固定为学生角色
+          }
+        };
+      }
+      return newUser;
     } catch (error) {
       console.error('添加学生失败:', error);
-      return { code: 500, message: '添加学生失败', data: null };
+      return { code: 500, message: '服务器错误', data: null };
     }
   }
 

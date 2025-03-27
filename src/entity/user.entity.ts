@@ -4,7 +4,7 @@ import { UserProblem } from './user-problem.entity';
 @Entity('user')
 export class User {
   @PrimaryGeneratedColumn({ name: 'user_id' })
-  userId: number;
+  user_id: number;
 
   @Column({
     type: 'varchar',
@@ -35,8 +35,8 @@ export class User {
     default: 0,
     comment: '角色ID (0学生,1教师,2管理员)',
   })
-  roleId: number;
+  role_id: number;
 
   @OneToMany(() => UserProblem, userProblem => userProblem.user)
-  userProblems: UserProblem[];
+  user_problems: UserProblem[];
 } 
