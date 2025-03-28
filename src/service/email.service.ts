@@ -12,7 +12,7 @@ export class EmailService {
   @InjectEntityModel(VerificationCode)
   verificationCodeModel: Repository<VerificationCode>;
 
-  @Config('email')
+  @Config('emailConfig')
   emailConfig: {
     host: string;
     port: number;
